@@ -1,6 +1,7 @@
 # hicsv-python
 Python implementation of the I/O interface for the Header-Included Comma-Separated Values (hicsv) file format. 
 
+## What is *hicsv*?
 Header-included comma-separated values (*hicsv* or *hi-csv* in short)
 is a text file format consisting of a header (metadata) 
 and a tabulated values, both in a human-readable and editable form. 
@@ -54,6 +55,29 @@ at the top. The rough, tentative specification of *hicsv* is as follows.
 6. The columns in the CSV table should always be of the same length. 
 
 7. Each column must consist of only one type. 
+
+## Example of *hicsv* format
+
+```
+#{
+#    "some metadata entry": "some metadata",
+#    "it can be anything": {
+#        "that": "can be made into a JSON file",
+#        "for example": "a dictionary"
+#    },
+#    "もちろん": "ユニコード文字もOK",
+#    "hicsv-python version": "0.0.0",
+#    "hicsv version": "20220812"
+#}
+#"first column"     ,"2nd column","column 3","四番目のカラム"
+0.391006442374058   ,0           ,"string"  ,"いち"     
+0.6943031206081407  ,1           ,"is"      ,"に"      
+0.03433735164688634 ,2           ,"also"    ,"さん"     
+0.015028457129899642,3           ,"OK"      ,"よん"     
+0.5900201005940872  ,4           ,"!"       ,"ご"      
+```
+
+## Scope of this package
 
 The ``hicsv`` package is a minimal implementation of the I/O interface 
 to the *hicsv*-formatted files. 
