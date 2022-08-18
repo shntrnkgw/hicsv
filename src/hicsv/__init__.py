@@ -60,17 +60,6 @@ to the *hicsv*-formatted files.
 It, therefore, does not have (or aim for) any advanced functionalities. 
 Please use ``numpy`` and/or other useful packages for anything beyond I/O. 
 
-Note:
-    Some users may find the following behavior of this package unexpected. 
-
-    1. The parser deletes the spaces at the beginning and at the end of each cell. 
-       This is true even if the cell content is double-quoted. 
-       For example, the two cells
-
-            "spam", "  spam  "
-       
-       results in identical strings. 
-
 Example:
     To read a hicsv-formatted text file,
 
@@ -106,6 +95,17 @@ Example:
     Then you can write into a hicsv-formatted text file like::
 
         >>> out.save("new hicsv file.txt")
+
+Note:
+    Some users may find the following behavior of this package unexpected. 
+
+    1. The parser deletes the spaces at the beginning and at the end of each cell. 
+       This is true even if the cell content is double-quoted. 
+       For example, the two cells
+
+            "spam", "  spam  "
+       
+       results in identical strings. 
 """
 
 from typing import List, IO
@@ -201,6 +201,8 @@ class hicsv(object):
         keys: List[str] = []
         rows_str: List[List[str]] = []
         cols_str: List[List[str]] = []
+        num_rows: int = 0
+        num_cols: int = 0
 
         lines = fp.readlines()
 
@@ -267,9 +269,9 @@ class hicsv(object):
             if row:
                 rows_str.append([e.strip() for e in row]) # spaces are omitted
 
-        length = len(rows_str)
-
-        cols_str = [*zip(*rows_str)]
+        num_rows = len(rows_str)
+        num_cols = len(keys)
+        cols_str = [[rows_str[i][j] for i in range(num_rows)] for j in range(num_cols)] # same as list(zip(*row_str))
 
         # detect type and store arrays
         for key, col_str in zip(keys, cols_str):
@@ -298,15 +300,15 @@ class hicsv(object):
         Returns:
             column index. 
         """
-        try:
-            return self.keys.index(col)
-        except ValueError:
-            if isinstance(col, int):
-                if col < len(self.keys):
-                    return col
-                else:
-                    raise IndexError("column index out of range: max. {0} but {1} given".format(len(self.keys), col))
+        if isinstance(col, int):
+            if col < len(self.keys):
+                return col
             else:
+                raise IndexError("column index out of range: max. {0} but {1} given".format(len(self.keys), col))
+        elif isinstance(col, str):
+            try:
+                return self.keys.index(col)
+            except ValueError:
                 raise KeyError("column key not found: '{0}'".format(col))
 
     def _get_column_as_array(self, col: int|str) -> np.ndarray:
@@ -338,8 +340,7 @@ class hicsv(object):
         if len(cols) == 1:
             return self._get_column_as_array(cols[0])
         else:
-            for col in cols:
-                return [self._get_column_as_array(col) for col in cols]
+            return [self._get_column_as_array(col) for col in cols]
 
     def ga(self, *cols: int|str) -> np.ndarray | List[np.ndarray]:
         """Alias for `get_columns_as_arrays()`. 
@@ -393,7 +394,7 @@ class hicsv(object):
         elif not (np.issubdtype(arr.dtype, np.integer) or 
                   np.issubdtype(arr.dtype, np.floating) or 
                   np.issubdtype(arr.dtype, np.str_)):
-            raise TypeError("expected numpy array with the sub-dtype of numpy.integer, numpy.floating, or numpy.str_: got".format(arr.dtype))
+            raise TypeError("expected numpy array with the sub-dtype of numpy.integer, numpy.floating, or numpy.str_: got <{0}>".format(arr.dtype))
         elif (not self.keys) and pos==0: # first column!
             ok = True
         elif key in self.keys:
@@ -599,12 +600,12 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
             When `keys` is specified, `key_line` will be ignored. 
     '''
 
-    lines: List(str) = []
+    lines: List[str] = []
     lines_table: List[str] = []
-    rows_str: List(str) = []
-    _ignore_lines: List(int) = ignore_lines
+    rows_str: List[List[str]] = []
+    _ignore_lines: List[int] = ignore_lines
     i: int = 0
-    _keys: List(str) = []
+    _keys: List[str] = []
     length: int = 0
 
     if isinstance(fp, str):
@@ -613,13 +614,16 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
     else:
         lines = fp.readlines()
 
-    # key line must also be ignored
+    # if keys are provided, use that. 
     if keys:
         _keys = keys
-    elif key_line != None:
+    # if not provided and the key_line is provided (as int), 
+    # try to read the keys from that line
+    elif isinstance(key_line, int):
         for row in csv.reader([lines[key_line], ], delimiter=sep): # just one line
             _keys = [k.strip(" ") for k in row]
 
+        # this line should also be ignored
         _ignore_lines.append(key_line)
 
     # ignore the specified lines
