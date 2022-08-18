@@ -1,4 +1,4 @@
-# hicsv
+# hicsv-python
 Python implementation of the I/O interface for the Header-Included Comma-Separated Values (hicsv) file format. 
 
 Header-included comma-separated values (*hicsv* or *hi-csv* in short)
