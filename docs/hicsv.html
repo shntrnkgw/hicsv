@@ -1,0 +1,510 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>hicsv package &#8212; hicsv-python 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinxdoc.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="hicsv-python documentation" href="index.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="hicsv-python documentation"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">hicsv-python 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hicsv package</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="hicsv-package">
+<h1>hicsv package<a class="headerlink" href="#hicsv-package" title="Permalink to this heading">¶</a></h1>
+<section id="module-hicsv">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-hicsv" title="Permalink to this heading">¶</a></h2>
+<p>I/O interface for hicsv (header-included comma-separated values) format.</p>
+<p>Header-included comma-separated values (<em>hicsv</em> or hi-csv in short)
+is a text file format consisting of a header (metadata)
+and a tabulated values, both in a human-readable and editable form.</p>
+<p>CSV is a great universal format that can store a table of values
+in a human-readable way.
+Many instruments and softwares can export data in CSV.
+We can then avoid dealing with the proprietary binary formats
+whose specifications are often not disclosed to consumers.</p>
+<p>However, there is no commonly accepted method to store metadata
+along with a table of values.
+Metadata such as experimental conditions, author, etc.
+are often essential in science.
+People can easily lose track of these metadata when the CSV file
+only contains the table part.</p>
+<p>There are some formats or conventions that (try to) treat a table
+and metadata nicely (e.g. Tabular Data Package
+<a class="reference external" href="https://specs.frictionlessdata.io/tabular-data-package/#introduction">https://specs.frictionlessdata.io/tabular-data-package/#introduction</a>).
+But, to the best of the author’s knowledge, there is no text-based
+generic format that <em>combines</em> a table and metadata in a single file.</p>
+<p>It is very important to combine the metadata and the table
+because it would be difficult to force everyone to
+always keep two separate files together.</p>
+<p>Binary formats such as HDF5 can store metadata in addition to
+image or array data. But again, there is no text-based,
+human-readable format with embedded metadata.</p>
+<p><em>hicsv</em> format has been developed as a solution to the above problem.
+It is basically just a CSV table with a JSON header part attached
+at the top. The rough, tentative specification of <em>hicsv</em> is as follows.</p>
+<ol class="arabic simple">
+<li><p>It should be a Unicode text file.</p></li>
+<li><p>It starts with consequtive lines starting with <code class="docutils literal notranslate"><span class="pre">#</span></code>.</p></li>
+<li><p>The last one of the <code class="docutils literal notranslate"><span class="pre">#</span></code>-capped lines represents the “keys” of each column
+in the table.</p></li>
+<li><p>The rest of the <code class="docutils literal notranslate"><span class="pre">#</span></code>-capped lines are an indented JSON which represents
+the dictionary of metadata.</p></li>
+<li><p>The lines not starting with <code class="docutils literal notranslate"><span class="pre">#</span></code> are the CSV table.
+The CSV part follows the generally accepted conventions
+(mostly RFC 4180 but may not be strict)
+except for following additional restrictions.</p></li>
+<li><p>The columns in the CSV table should always be of the same length.</p></li>
+<li><p>Each column must consist of only one type.</p></li>
+</ol>
+<p>The <code class="docutils literal notranslate"><span class="pre">hicsv</span></code> package is a minimal implementation of the I/O interface
+to the <em>hicsv</em>-formatted files.
+It, therefore, does not have (or aim for) any advanced functionalities.
+Please use <code class="docutils literal notranslate"><span class="pre">numpy</span></code> and/or other useful packages for anything beyond I/O.</p>
+<p class="rubric">Example</p>
+<p>To read a hicsv-formatted text file,</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">hicsv</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">(</span><span class="s2">&quot;foo.txt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or you can just create an empty object to which
+you can add columns and header info.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">e</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>You can get one or more columns.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">c1</span><span class="p">,</span> <span class="n">c2</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;column 1&quot;</span><span class="p">,</span> <span class="s2">&quot;column 2&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The header info is stored as a dictionary.
+You can set and get information at any time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;new header entry&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;some value&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;new header entry&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>If you need to create a hicsv-formatted file from scratch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span> <span class="o">=</span> <span class="n">hicsv</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>To add a column:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;column 1&quot;</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Here <code class="docutils literal notranslate"><span class="pre">arr</span></code> should be a 1-d numpy array.
+Note that all columns must be of the same length,
+so adding an array with different length will cause error.
+Then you can write into a hicsv-formatted text file like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">out</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;new hicsv file.txt&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Some users may find the following behavior of this package unexpected.</p>
+<ol class="arabic">
+<li><p>The parser deletes the spaces at the beginning and at the end of each cell.
+This is true even if the cell content is double-quoted.
+For example, the two cells</p>
+<blockquote>
+<div><p>“spam”, “  spam  “</p>
+</div></blockquote>
+<p>results in identical strings.</p>
+</li>
+</ol>
+</div>
+<dl class="py class">
+<dt class="sig sig-object py" id="hicsv.hicsv">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">hicsv.</span></span><span class="sig-name descname"><span class="pre">hicsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">IO</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/hicsv.html#hicsv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Container/writer class for a hicsv file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fp</strong> – File-like object or path to the file.
+If an empty string, an empty object will be created.
+If a string or a file-like object is given,
+the file will be loaded as the object.
+Defaults to <code class="docutils literal notranslate"><span class="pre">&quot;&quot;</span></code> (empty string) which creates an empty object.</p></li>
+<li><p><strong>**kwargs</strong> – Arguments of built-in function <code class="docutils literal notranslate"><span class="pre">open()</span></code>. (<cite>New in 1.0.0.</cite>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hicsv.hicsv.keys">
+<span class="sig-name descname"><span class="pre">keys</span></span><a class="headerlink" href="#hicsv.hicsv.keys" title="Permalink to this definition">¶</a></dt>
+<dd><p>column keys. a list of strings.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hicsv.hicsv.cols">
+<span class="sig-name descname"><span class="pre">cols</span></span><a class="headerlink" href="#hicsv.hicsv.cols" title="Permalink to this definition">¶</a></dt>
+<dd><p>columns. a list of 1-d numpy arrays.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="hicsv.hicsv.h">
+<span class="sig-name descname"><span class="pre">h</span></span><a class="headerlink" href="#hicsv.hicsv.h" title="Permalink to this definition">¶</a></dt>
+<dd><p>header.</p>
+</dd></dl>
+
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">hicsv</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">()</span> <span class="c1"># create empty object</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;a new header entry&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>    <span class="c1"># add an entry to the header</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;a new header entry&quot;</span><span class="p">])</span> <span class="c1"># access the header entry</span>
+<span class="go">1</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;the first column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">]))</span>  <span class="c1"># add column</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;the second column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="s2">&quot;b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">]))</span> <span class="c1"># add another column</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;the first column&quot;</span><span class="p">))</span> <span class="c1"># access the column</span>
+<span class="go">[0. 1. 2.]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;the first column&quot;</span><span class="p">,</span> <span class="s2">&quot;the second column&quot;</span><span class="p">))</span> <span class="c1"># access two columns at once</span>
+<span class="go">[array([0., 1., 2.]), array([&#39;a&#39;, &#39;b&#39;, &#39;c&#39;], dtype=&#39;&lt;U1&#39;)]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;spam.txt&quot;</span><span class="p">)</span> <span class="c1"># save to a text file</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d2</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">(</span><span class="s2">&quot;spam.txt&quot;</span><span class="p">)</span> <span class="c1"># load from a file</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.append_column">
+<span class="sig-name descname"><span class="pre">append_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.append_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.append_column" title="Permalink to this definition">¶</a></dt>
+<dd><p>Appends a single column to the table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>key</strong> – Identifier for the new column.
+Keys already in use are not allowed.</p></li>
+<li><p><strong>arr</strong> – <p>A 1-d numpy array of the new column.</p>
+<p>If it’s the first column to be inserted,
+it can be of any length.
+However, if there is previously inserted column(s),
+the new column must be of the same length as the
+already-existing columns.</p>
+<p>The dtype of the column must be the sub-type of
+<code class="docutils literal notranslate"><span class="pre">numpy.integer</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy.floating</span></code>, or <code class="docutils literal notranslate"><span class="pre">numpy.str_</span></code>.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the array dimension is not 1
+    or if the array length does not match
+    that of the already existing column(s).</p></li>
+<li><p><strong>KeyError</strong> – If the key is already in use.</p></li>
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">dtype</span></code> of <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not
+    the subtype of <code class="docutils literal notranslate"><span class="pre">numpy.integer</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy.floating</span></code>, or <code class="docutils literal notranslate"><span class="pre">numpy.str_</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;second column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;third column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="s2">&quot;four&quot;</span><span class="p">,</span> <span class="s2">&quot;five&quot;</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;fourth column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">]))</span> <span class="c1"># this will fail due to length mismatch</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.fromfile">
+<span class="sig-name descname"><span class="pre">fromfile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">IO</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.fromfile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.fromfile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads a hicsv file and updates the stored headers &amp; columns.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>fp</strong> – file-like object or path to the file.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>It overwrites the header <code class="docutils literal notranslate"><span class="pre">h</span></code> and appends the loaded columns to
+the exsting <code class="docutils literal notranslate"><span class="pre">cols</span></code> by using <code class="docutils literal notranslate"><span class="pre">append_column()</span></code>.
+Therefore, if <code class="docutils literal notranslate"><span class="pre">append_column()</span></code> fails for any of the new columns,
+this will not work.</p>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.ga">
+<span class="sig-name descname"><span class="pre">ga</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.ga"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.ga" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for <cite>get_columns_as_arrays()</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>*cols</strong> – column names or indices. str and int can be mixed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>if one column name/index is given, a 1-d numpy array.
+if two or more names/indices are given, a list of 1-d numpy arrays.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a1</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;column 1&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a2</span><span class="p">,</span> <span class="n">a3</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;column two&quot;</span><span class="p">,</span> <span class="s2">&quot;third column&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.get_columns_as_arrays">
+<span class="sig-name descname"><span class="pre">get_columns_as_arrays</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">cols</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.get_columns_as_arrays"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.get_columns_as_arrays" title="Permalink to this definition">¶</a></dt>
+<dd><p>Gets a single column or multiple columns by column names or column indices.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>*cols</strong> – column names or indices. str and int can be mixed.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>if one column name/index is given, a 1-d numpy array.
+if two or more names/indices are given, a list of 1-d numpy arrays.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a1</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get_columns_as_arrays</span><span class="p">(</span><span class="s2">&quot;column 1&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">a2</span><span class="p">,</span> <span class="n">a3</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">get_columns_as_arrays</span><span class="p">(</span><span class="s2">&quot;column two&quot;</span><span class="p">,</span> <span class="s2">&quot;third column&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.insert_column">
+<span class="sig-name descname"><span class="pre">insert_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pos</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.insert_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.insert_column" title="Permalink to this definition">¶</a></dt>
+<dd><p>Inserts a single column into the table.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pos</strong> – Position of the new column.</p></li>
+<li><p><strong>key</strong> – Identifier for the new column.
+Keys already in use are not allowed.</p></li>
+<li><p><strong>arr</strong> – <p>A 1-d numpy array of the new column.</p>
+<p>If it’s the first column to be inserted,
+it can be of any length.
+However, if there is previously inserted column(s),
+the new column must be of the same length as the
+already-existing columns.</p>
+<p>The dtype of the column must be the sub-type of
+<code class="docutils literal notranslate"><span class="pre">numpy.integer</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy.floating</span></code>, or <code class="docutils literal notranslate"><span class="pre">numpy.str_</span></code>.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>ValueError</strong> – If the array dimension is not 1
+    or if the array length does not match
+    that of the already existing column(s).</p></li>
+<li><p><strong>KeyError</strong> – If the key is already in use.</p></li>
+<li><p><strong>TypeError</strong> – If <code class="docutils literal notranslate"><span class="pre">dtype</span></code> of <code class="docutils literal notranslate"><span class="pre">arr</span></code> is not
+    the subtype of <code class="docutils literal notranslate"><span class="pre">numpy.integer</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy.floating</span></code>, or <code class="docutils literal notranslate"><span class="pre">numpy.str_</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.remove_column">
+<span class="sig-name descname"><span class="pre">remove_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.remove_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.remove_column" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a column from the object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>col</strong> – column name or index.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.replace_column">
+<span class="sig-name descname"><span class="pre">replace_column</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">col</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.replace_column"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.replace_column" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replaces the content of an existing column.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>col</strong> – column name or index.</p></li>
+<li><p><strong>arr</strong> – <p>A 1-d numpy array of the new column.</p>
+<p>It must be of the same length as the already-existing columns.</p>
+<p>The dtype of the column must be the sub-type of
+<code class="docutils literal notranslate"><span class="pre">numpy.integer</span></code>, <code class="docutils literal notranslate"><span class="pre">numpy.floating</span></code>, or <code class="docutils literal notranslate"><span class="pre">numpy.str_</span></code>.</p>
+</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;second column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">))</span>
+<span class="go">[0 1 2 3 4]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">replace_column</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="s2">&quot;four&quot;</span><span class="p">,</span> <span class="s2">&quot;five&quot;</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">))</span>
+<span class="go">[&#39;one&#39; &#39;two&#39; &#39;three&#39; &#39;four&#39; &#39;five&#39;]</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="hicsv.hicsv.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">IO</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">prettify</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_version_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="_modules/hicsv.html#hicsv.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.hicsv.save" title="Permalink to this definition">¶</a></dt>
+<dd><p>Saves the object content to a hicsv-formatted text file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fp</strong> – file-like object of the destination.</p></li>
+<li><p><strong>prettify</strong> – True to turn on pretty formatting.</p></li>
+<li><p><strong>add_version_info</strong> – If True, automatically adds the current versions
+of the module and the hicsv format specification.</p></li>
+<li><p><strong>**kwargs</strong> – Arguments of built-in <code class="docutils literal notranslate"><span class="pre">open()</span></code>. Used only when <code class="docutils literal notranslate"><span class="pre">fp</span></code> is a string.
+The <code class="docutils literal notranslate"><span class="pre">mode</span></code> parameter is set to “w” by default. (<cite>New in 1.0.0.</cite>)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="o">.</span><span class="n">hicsv</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;first column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;second column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;third column&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;one&quot;</span><span class="p">,</span> <span class="s2">&quot;two&quot;</span><span class="p">,</span> <span class="s2">&quot;three&quot;</span><span class="p">,</span> <span class="s2">&quot;four&quot;</span><span class="p">,</span> <span class="s2">&quot;five&quot;</span><span class="p">]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">d</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;spam.txt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Or,</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;spam.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+<span class="gp">&gt;&gt;&gt; </span>    <span class="n">d</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="hicsv.txt2hicsv">
+<span class="sig-prename descclassname"><span class="pre">hicsv.</span></span><span class="sig-name descname"><span class="pre">txt2hicsv</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">IO</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">','</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ignore_lines</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key_line</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keys</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#hicsv.hicsv" title="hicsv.hicsv"><span class="pre">hicsv</span></a></span></span><a class="reference internal" href="_modules/hicsv.html#txt2hicsv"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#hicsv.txt2hicsv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reads a generic delimited text file and converts it into a hicsv object.</p>
+<p>This is a convenient function to import simple text data file into a hicsv object.
+It is also an example of the usage of <cite>hicsv</cite> class.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fp</strong> – string or file-like object of the input file.</p></li>
+<li><p><strong>sep</strong> – Delimiter character of the input file. Defaults to comma.</p></li>
+<li><p><strong>ignore_lines</strong> – List of line numbers to ignore. Defaults to empty list</p></li>
+<li><p><strong>key_line</strong> – Line number of the column key. If <cite>None</cite>, keys will be automatically
+named as “0”, “1”, “2”, etc.</p></li>
+<li><p><strong>keys</strong> – List of column keys. It’s useful if you know the table structure exactly.
+This must match the number of columns in the input file.
+When <cite>keys</cite> is specified, <cite>key_line</cite> will be ignored.</p></li>
+<li><p><strong>**kwargs</strong> – Arguments of built-in <code class="docutils literal notranslate"><span class="pre">open()</span></code>. Used only when <code class="docutils literal notranslate"><span class="pre">fp</span></code> is a string. (<cite>New in 1.0.0.</cite>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">hicsv package</a><ul>
+<li><a class="reference internal" href="#module-hicsv">Module contents</a><ul>
+<li><a class="reference internal" href="#hicsv.hicsv"><code class="docutils literal notranslate"><span class="pre">hicsv</span></code></a><ul>
+<li><a class="reference internal" href="#hicsv.hicsv.keys"><code class="docutils literal notranslate"><span class="pre">hicsv.keys</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.cols"><code class="docutils literal notranslate"><span class="pre">hicsv.cols</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.h"><code class="docutils literal notranslate"><span class="pre">hicsv.h</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.append_column"><code class="docutils literal notranslate"><span class="pre">hicsv.append_column()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.fromfile"><code class="docutils literal notranslate"><span class="pre">hicsv.fromfile()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.ga"><code class="docutils literal notranslate"><span class="pre">hicsv.ga()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.get_columns_as_arrays"><code class="docutils literal notranslate"><span class="pre">hicsv.get_columns_as_arrays()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.insert_column"><code class="docutils literal notranslate"><span class="pre">hicsv.insert_column()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.remove_column"><code class="docutils literal notranslate"><span class="pre">hicsv.remove_column()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.replace_column"><code class="docutils literal notranslate"><span class="pre">hicsv.replace_column()</span></code></a></li>
+<li><a class="reference internal" href="#hicsv.hicsv.save"><code class="docutils literal notranslate"><span class="pre">hicsv.save()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#hicsv.txt2hicsv"><code class="docutils literal notranslate"><span class="pre">txt2hicsv()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="index.html"
+                          title="previous chapter">hicsv-python documentation</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/hicsv.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="hicsv-python documentation"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">hicsv-python 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hicsv package</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Shintaro Nakagawa.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

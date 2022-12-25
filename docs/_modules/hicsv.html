@@ -1,0 +1,792 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hicsv &#8212; hicsv-python 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinxdoc.css" />
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">hicsv-python 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hicsv</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for hicsv</h1><div class="highlight"><pre>
+<span></span><span class="c1"># coding=&quot;utf-8&quot;</span>
+<span class="sd">&quot;&quot;&quot;I/O interface for hicsv (header-included comma-separated values) format. </span>
+
+<span class="sd">Header-included comma-separated values (*hicsv* or hi-csv in short)</span>
+<span class="sd">is a text file format consisting of a header (metadata) </span>
+<span class="sd">and a tabulated values, both in a human-readable and editable form. </span>
+
+<span class="sd">CSV is a great universal format that can store a table of values </span>
+<span class="sd">in a human-readable way. </span>
+<span class="sd">Many instruments and softwares can export data in CSV. </span>
+<span class="sd">We can then avoid dealing with the proprietary binary formats </span>
+<span class="sd">whose specifications are often not disclosed to consumers. </span>
+
+<span class="sd">However, there is no commonly accepted method to store metadata</span>
+<span class="sd">along with a table of values. </span>
+<span class="sd">Metadata such as experimental conditions, author, etc. </span>
+<span class="sd">are often essential in science. </span>
+<span class="sd">People can easily lose track of these metadata when the CSV file</span>
+<span class="sd">only contains the table part. </span>
+
+<span class="sd">There are some formats or conventions that (try to) treat a table </span>
+<span class="sd">and metadata nicely (e.g. Tabular Data Package</span>
+<span class="sd">https://specs.frictionlessdata.io/tabular-data-package/#introduction). </span>
+<span class="sd">But, to the best of the author&#39;s knowledge, there is no text-based </span>
+<span class="sd">generic format that *combines* a table and metadata in a single file. </span>
+
+<span class="sd">It is very important to combine the metadata and the table </span>
+<span class="sd">because it would be difficult to force everyone to </span>
+<span class="sd">always keep two separate files together. </span>
+
+<span class="sd">Binary formats such as HDF5 can store metadata in addition to </span>
+<span class="sd">image or array data. But again, there is no text-based, </span>
+<span class="sd">human-readable format with embedded metadata. </span>
+
+<span class="sd">*hicsv* format has been developed as a solution to the above problem. </span>
+<span class="sd">It is basically just a CSV table with a JSON header part attached </span>
+<span class="sd">at the top. The rough, tentative specification of *hicsv* is as follows. </span>
+
+<span class="sd">1. It should be a Unicode text file. </span>
+
+<span class="sd">2. It starts with consequtive lines starting with ``#``. </span>
+
+<span class="sd">3. The last one of the ``#``-capped lines represents the &quot;keys&quot; of each column </span>
+<span class="sd">   in the table. </span>
+
+<span class="sd">4. The rest of the ``#``-capped lines are an indented JSON which represents</span>
+<span class="sd">   the dictionary of metadata. </span>
+
+<span class="sd">5. The lines not starting with ``#`` are the CSV table. </span>
+<span class="sd">   The CSV part follows the generally accepted conventions</span>
+<span class="sd">   (mostly RFC 4180 but may not be strict)</span>
+<span class="sd">   except for following additional restrictions. </span>
+
+<span class="sd">6. The columns in the CSV table should always be of the same length. </span>
+
+<span class="sd">7. Each column must consist of only one type. </span>
+
+<span class="sd">The ``hicsv`` package is a minimal implementation of the I/O interface </span>
+<span class="sd">to the *hicsv*-formatted files. </span>
+<span class="sd">It, therefore, does not have (or aim for) any advanced functionalities. </span>
+<span class="sd">Please use ``numpy`` and/or other useful packages for anything beyond I/O. </span>
+
+<span class="sd">Example:</span>
+<span class="sd">    To read a hicsv-formatted text file,</span>
+
+<span class="sd">        &gt;&gt;&gt; import hicsv</span>
+<span class="sd">        &gt;&gt;&gt; d = hicsv.hicsv(&quot;foo.txt&quot;)</span>
+<span class="sd">    </span>
+<span class="sd">    Or you can just create an empty object to which </span>
+<span class="sd">    you can add columns and header info. </span>
+
+<span class="sd">        &gt;&gt;&gt; e = hicsv.hicsv()</span>
+
+<span class="sd">    You can get one or more columns. </span>
+
+<span class="sd">        &gt;&gt;&gt; c1, c2 = d.ga(&quot;column 1&quot;, &quot;column 2&quot;)</span>
+<span class="sd">    </span>
+<span class="sd">    The header info is stored as a dictionary. </span>
+<span class="sd">    You can set and get information at any time::</span>
+
+<span class="sd">        &gt;&gt;&gt; d.h[&quot;new header entry&quot;] = &quot;some value&quot;</span>
+<span class="sd">        &gt;&gt;&gt; print(d.h[&quot;new header entry&quot;])</span>
+<span class="sd">        </span>
+<span class="sd">    If you need to create a hicsv-formatted file from scratch::</span>
+
+<span class="sd">        &gt;&gt;&gt; out = hicsv()</span>
+<span class="sd">    </span>
+<span class="sd">    To add a column::</span>
+
+<span class="sd">        &gt;&gt;&gt; out.append_column(&quot;column 1&quot;, arr)</span>
+<span class="sd">    </span>
+<span class="sd">    Here ``arr`` should be a 1-d numpy array. </span>
+<span class="sd">    Note that all columns must be of the same length, </span>
+<span class="sd">    so adding an array with different length will cause error. </span>
+<span class="sd">    Then you can write into a hicsv-formatted text file like::</span>
+
+<span class="sd">        &gt;&gt;&gt; out.save(&quot;new hicsv file.txt&quot;, encoding=&quot;utf-8&quot;)</span>
+
+<span class="sd">Note:</span>
+<span class="sd">    Some users may find the following behavior of this package unexpected. </span>
+
+<span class="sd">    1. The parser deletes the spaces at the beginning and at the end of each cell. </span>
+<span class="sd">       This is true even if the cell content is double-quoted. </span>
+<span class="sd">       For example, the two cells</span>
+
+<span class="sd">            &quot;spam&quot;, &quot;  spam  &quot;</span>
+<span class="sd">       </span>
+<span class="sd">       results in identical strings. </span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">IO</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">import</span> <span class="nn">json</span><span class="o">,</span> <span class="nn">csv</span><span class="o">,</span> <span class="nn">io</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;1.0.0&quot;</span>
+<span class="n">HICSV_VERSION</span> <span class="o">=</span> <span class="s2">&quot;20220812&quot;</span>
+
+<span class="n">HEADER_STARTSWITH</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;#&quot;</span>
+<span class="n">DELIMITER</span><span class="p">:</span>         <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span>
+
+<div class="viewcode-block" id="hicsv"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv">[docs]</a><span class="k">class</span> <span class="nc">hicsv</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Container/writer class for a hicsv file. </span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        fp: File-like object or path to the file. </span>
+<span class="sd">            If an empty string, an empty object will be created. </span>
+<span class="sd">            If a string or a file-like object is given, </span>
+<span class="sd">            the file will be loaded as the object. </span>
+<span class="sd">            Defaults to ``&quot;&quot;`` (empty string) which creates an empty object. </span>
+<span class="sd">        **kwargs: Arguments of built-in function ``open()``. (`New in 1.0.0.`)</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        keys: column keys. a list of strings. </span>
+<span class="sd">        cols: columns. a list of 1-d numpy arrays. </span>
+<span class="sd">        h: header. </span>
+
+<span class="sd">    Example:</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np</span>
+<span class="sd">        &gt;&gt;&gt; import hicsv</span>
+<span class="sd">        &gt;&gt;&gt; d = hicsv.hicsv() # create empty object</span>
+<span class="sd">        &gt;&gt;&gt; d.h[&quot;a new header entry&quot;] = 1    # add an entry to the header</span>
+<span class="sd">        &gt;&gt;&gt; print(d.h[&quot;a new header entry&quot;]) # access the header entry</span>
+<span class="sd">        1</span>
+<span class="sd">        &gt;&gt;&gt; d.append_column(&quot;the first column&quot;, np.array([0.0, 1.0, 2.0]))  # add column</span>
+<span class="sd">        &gt;&gt;&gt; d.append_column(&quot;the second column&quot;, np.array([&quot;a&quot;, &quot;b&quot;, &quot;c&quot;])) # add another column</span>
+<span class="sd">        &gt;&gt;&gt; print(d.ga(&quot;the first column&quot;)) # access the column</span>
+<span class="sd">        [0. 1. 2.]</span>
+<span class="sd">        &gt;&gt;&gt; print(d.ga(&quot;the first column&quot;, &quot;the second column&quot;)) # access two columns at once</span>
+<span class="sd">        [array([0., 1., 2.]), array([&#39;a&#39;, &#39;b&#39;, &#39;c&#39;], dtype=&#39;&lt;U1&#39;)]</span>
+<span class="sd">        &gt;&gt;&gt; d.save(&quot;spam.txt&quot;) # save to a text file</span>
+<span class="sd">        &gt;&gt;&gt; d2 = hicsv.hicsv(&quot;spam.txt&quot;) # load from a file</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fp</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="n">IO</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;initializer</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span>        <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">:</span>    <span class="nb">dict</span>             <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fromfile</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+<div class="viewcode-block" id="hicsv.fromfile"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.fromfile">[docs]</a>    <span class="k">def</span> <span class="nf">fromfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fp</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="n">IO</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot; Loads a hicsv file and updates the stored headers &amp; columns. </span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            fp: file-like object or path to the file. </span>
+
+<span class="sd">        Note:</span>
+<span class="sd">            It overwrites the header ``h`` and appends the loaded columns to</span>
+<span class="sd">            the exsting ``cols`` by using ``append_column()``. </span>
+<span class="sd">            Therefore, if ``append_column()`` fails for any of the new columns, </span>
+<span class="sd">            this will not work. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_fromfile</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fromfile</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_fromfile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fp</span><span class="p">:</span> <span class="n">IO</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Internal function to load a text file into a ``hicsv`` object. </span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            fp: file-like object. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines_header</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">lines_table</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">i</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">ln_table_start</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">line_keys</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">rows_str</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">cols_str</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">num_rows</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">num_cols</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+        <span class="c1"># find the start of data table (the first line without #)</span>
+        <span class="n">ln_table_start</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="n">HEADER_STARTSWITH</span><span class="p">):</span>
+                <span class="n">ln_table_start</span> <span class="o">=</span> <span class="n">i</span>
+                <span class="k">break</span>
+        
+        <span class="c1"># if the line without # is not found, </span>
+        <span class="c1"># it&#39;s quite likely that the file does not have a table part. </span>
+        <span class="k">if</span> <span class="n">ln_table_start</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+
+            <span class="c1"># first, try parsing all the lines as JSON</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">])</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">hstr</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># if it succeeds, then there&#39;s no keys no values. </span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+
+                <span class="k">return</span> <span class="c1"># no further processes!</span>
+            
+            <span class="c1"># if the first trial fails, </span>
+            <span class="c1"># try parsing all the lines except for the last one as JSON</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">hstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+                <span class="n">h</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">hstr</span><span class="p">)</span>
+            <span class="k">except</span> <span class="n">json</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">:</span>
+                <span class="k">pass</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># if it succeeds, then there&#39;s no values (only keys exist)</span>
+                <span class="n">line_keys</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span> <span class="c1"># remove the first char (#)</span>
+
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">([</span><span class="n">line_keys</span><span class="p">,</span> <span class="p">],</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">DELIMITER</span><span class="p">):</span>
+                    <span class="n">keys</span> <span class="o">=</span> <span class="n">row</span>
+                
+                <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([]))</span>
+                
+                <span class="k">return</span> <span class="c1"># no further processes!</span>
+
+        <span class="c1"># if ln_table_start is not zero, then it is a truly non-empty file. </span>
+        <span class="n">lines_header</span> <span class="o">=</span> <span class="n">lines</span><span class="p">[:</span><span class="n">ln_table_start</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">line_keys</span>    <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">ln_table_start</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">:]</span> <span class="c1"># remove the first char (#)</span>
+        <span class="n">lines_table</span>  <span class="o">=</span> <span class="n">lines</span><span class="p">[</span><span class="n">ln_table_start</span><span class="p">:]</span>
+
+        <span class="c1"># parse header</span>
+        <span class="n">hstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">l</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">lines_header</span><span class="p">])</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">hstr</span><span class="p">)</span>
+
+        <span class="c1"># parse single line for column keys</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">([</span><span class="n">line_keys</span><span class="p">,</span> <span class="p">],</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">DELIMITER</span><span class="p">):</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="n">row</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">]</span> <span class="c1"># spaces at the beginning and the end are omitted</span>
+
+        <span class="c1"># parse data lines</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">lines_table</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">DELIMITER</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">row</span><span class="p">:</span>
+                <span class="n">rows_str</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">e</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">row</span><span class="p">])</span> <span class="c1"># spaces are omitted</span>
+
+        <span class="n">num_rows</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows_str</span><span class="p">)</span>
+        <span class="n">num_cols</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">keys</span><span class="p">)</span>
+        <span class="n">cols_str</span> <span class="o">=</span> <span class="p">[[</span><span class="n">rows_str</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_rows</span><span class="p">)]</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_cols</span><span class="p">)]</span> <span class="c1"># same as list(zip(*row_str))</span>
+
+        <span class="c1"># detect type and store arrays</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">col_str</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">keys</span><span class="p">,</span> <span class="n">cols_str</span><span class="p">):</span>
+            <span class="c1"># check if it&#39;s int</span>
+            <span class="k">if</span> <span class="n">col_str</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># if not, check if it&#39;s float</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="nb">float</span><span class="p">(</span><span class="n">col_str</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                    <span class="c1"># if not, then it is stored as string</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">))</span>
+                    <span class="c1"># if it&#39;s not an int or string, then it must be a float. </span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">h</span><span class="p">)</span>
+    
+    <span class="k">def</span> <span class="nf">_get_column_index</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span><span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Internal function to convert column name (or index) into a column index</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            col: column name or index. </span>
+<span class="sd">        </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            column index. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">col</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">col</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">IndexError</span><span class="p">(</span><span class="s2">&quot;column index out of range: max. </span><span class="si">{0}</span><span class="s2"> but </span><span class="si">{1}</span><span class="s2"> given&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">),</span> <span class="n">col</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">col</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">index</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;column key not found: &#39;</span><span class="si">{0}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">col</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">_get_column_as_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Gets a single column by a column name or column index. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            col: column name or index. </span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            a 1-d numpy array of the column. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_column_index</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span>
+
+<div class="viewcode-block" id="hicsv.get_columns_as_arrays"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.get_columns_as_arrays">[docs]</a>    <span class="k">def</span> <span class="nf">get_columns_as_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">cols</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Gets a single column or multiple columns by column names or column indices. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *cols: column names or indices. str and int can be mixed. </span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            if one column name/index is given, a 1-d numpy array. </span>
+<span class="sd">            if two or more names/indices are given, a list of 1-d numpy arrays. </span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; a1 = d.get_columns_as_arrays(&quot;column 1&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; a2, a3 = d.get_columns_as_arrays(&quot;column two&quot;, &quot;third column&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_column_as_array</span><span class="p">(</span><span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_get_column_as_array</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">cols</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="hicsv.ga"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.ga">[docs]</a>    <span class="k">def</span> <span class="nf">ga</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">cols</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">|</span> <span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;Alias for `get_columns_as_arrays()`. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            *cols: column names or indices. str and int can be mixed. </span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            if one column name/index is given, a 1-d numpy array. </span>
+<span class="sd">            if two or more names/indices are given, a list of 1-d numpy arrays. </span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; a1 = d.ga(&quot;column 1&quot;)</span>
+<span class="sd">            &gt;&gt;&gt; a2, a3 = d.ga(&quot;column two&quot;, &quot;third column&quot;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_columns_as_arrays</span><span class="p">(</span><span class="o">*</span><span class="n">cols</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="hicsv.insert_column"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.insert_column">[docs]</a>    <span class="k">def</span> <span class="nf">insert_column</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pos</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Inserts a single column into the table. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            pos: </span>
+<span class="sd">                Position of the new column. </span>
+<span class="sd">            key: </span>
+<span class="sd">                Identifier for the new column. </span>
+<span class="sd">                Keys already in use are not allowed. </span>
+<span class="sd">            arr: </span>
+<span class="sd">                A 1-d numpy array of the new column. </span>
+<span class="sd">                </span>
+<span class="sd">                If it&#39;s the first column to be inserted, </span>
+<span class="sd">                it can be of any length. </span>
+<span class="sd">                However, if there is previously inserted column(s), </span>
+<span class="sd">                the new column must be of the same length as the </span>
+<span class="sd">                already-existing columns. </span>
+
+<span class="sd">                The dtype of the column must be the sub-type of</span>
+<span class="sd">                ``numpy.integer``, ``numpy.floating``, or ``numpy.str_``. </span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the array dimension is not 1</span>
+<span class="sd">                or if the array length does not match </span>
+<span class="sd">                that of the already existing column(s). </span>
+<span class="sd">            KeyError: If the key is already in use. </span>
+<span class="sd">            TypeError: If ``dtype`` of ``arr`` is not </span>
+<span class="sd">                the subtype of ``numpy.integer``, ``numpy.floating``, or ``numpy.str_``. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ok</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+        
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;expected 1-d numpy array: got </span><span class="si">{0}</span><span class="s2">-d array&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">ndim</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">)</span> <span class="ow">or</span> 
+                  <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">)</span> <span class="ow">or</span> 
+                  <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">)):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;expected numpy array with the sub-dtype of numpy.integer, numpy.floating, or numpy.str_: got &lt;</span><span class="si">{0}</span><span class="s2">&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">)</span> <span class="ow">and</span> <span class="n">pos</span><span class="o">==</span><span class="mi">0</span><span class="p">:</span> <span class="c1"># first column!</span>
+            <span class="n">ok</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">elif</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="s2">&quot;column key </span><span class="si">{0}</span><span class="s2"> already exists. &quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;expected array length is </span><span class="si">{0}</span><span class="s2">: got </span><span class="si">{1}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">arr</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ok</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">ok</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">key</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="n">pos</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span></div>
+    
+<div class="viewcode-block" id="hicsv.append_column"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.append_column">[docs]</a>    <span class="k">def</span> <span class="nf">append_column</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Appends a single column to the table. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            key: </span>
+<span class="sd">                Identifier for the new column. </span>
+<span class="sd">                Keys already in use are not allowed. </span>
+<span class="sd">            arr: </span>
+<span class="sd">                A 1-d numpy array of the new column. </span>
+<span class="sd">                </span>
+<span class="sd">                If it&#39;s the first column to be inserted, </span>
+<span class="sd">                it can be of any length. </span>
+<span class="sd">                However, if there is previously inserted column(s), </span>
+<span class="sd">                the new column must be of the same length as the </span>
+<span class="sd">                already-existing columns. </span>
+
+<span class="sd">                The dtype of the column must be the sub-type of</span>
+<span class="sd">                ``numpy.integer``, ``numpy.floating``, or ``numpy.str_``. </span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: If the array dimension is not 1</span>
+<span class="sd">                or if the array length does not match </span>
+<span class="sd">                that of the already existing column(s). </span>
+<span class="sd">            KeyError: If the key is already in use. </span>
+<span class="sd">            TypeError: If ``dtype`` of ``arr`` is not </span>
+<span class="sd">                the subtype of ``numpy.integer``, ``numpy.floating``, or ``numpy.str_``. </span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; d = hicsv.hicsv()</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;first column&quot;, np.arange(5))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;second column&quot;, np.linspace(0.0, 1.0, 5))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;third column&quot;, np.array([&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;]))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;fourth column&quot;, np.array([0.0])) # this will fail due to length mismatch</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">insert_column</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">),</span> <span class="n">key</span><span class="p">,</span> <span class="n">arr</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="hicsv.replace_column"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.replace_column">[docs]</a>    <span class="k">def</span> <span class="nf">replace_column</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">,</span> <span class="n">arr</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Replaces the content of an existing column.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            col: column name or index. </span>
+<span class="sd">            arr: </span>
+<span class="sd">                A 1-d numpy array of the new column. </span>
+
+<span class="sd">                It must be of the same length as the already-existing columns. </span>
+
+<span class="sd">                The dtype of the column must be the sub-type of</span>
+<span class="sd">                ``numpy.integer``, ``numpy.floating``, or ``numpy.str_``. </span>
+
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; d = hicsv.hicsv()</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;first column&quot;, np.arange(5))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;second column&quot;, np.linspace(0.0, 1.0, 5))</span>
+<span class="sd">            &gt;&gt;&gt; print(d.ga(&quot;first column&quot;))</span>
+<span class="sd">            [0 1 2 3 4]</span>
+<span class="sd">            &gt;&gt;&gt; d.replace_column(&quot;first column&quot;, np.array([&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;]))</span>
+<span class="sd">            &gt;&gt;&gt; print(d.ga(&quot;first column&quot;))</span>
+<span class="sd">            [&#39;one&#39; &#39;two&#39; &#39;three&#39; &#39;four&#39; &#39;five&#39;]</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">arr</span><span class="o">.</span><span class="n">ndim</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;expected 1-d numpy array: got </span><span class="si">{0}</span><span class="s2">-d array&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">arr</span><span class="o">.</span><span class="n">ndim</span><span class="p">))</span>
+
+        <span class="n">cid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_column_index</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">[</span><span class="n">cid</span><span class="p">]</span> <span class="o">=</span> <span class="n">arr</span></div>
+    
+<div class="viewcode-block" id="hicsv.remove_column"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.remove_column">[docs]</a>    <span class="k">def</span> <span class="nf">remove_column</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">col</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Removes a column from the object. </span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            col: column name or index. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cid</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_column_index</span><span class="p">(</span><span class="n">col</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">cid</span><span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="nf">_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fp</span><span class="p">:</span> <span class="n">IO</span><span class="p">,</span> <span class="n">prettify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">add_version_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Internal function to save the hicsv file. </span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            fp: file-like object of the destination. </span>
+<span class="sd">            prettify: True to turn on pretty formatting. </span>
+<span class="sd">            add_version_info: If True, automatically adds the current versions</span>
+<span class="sd">                of the module and the hicsv format specification. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">h</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">scols</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">scol</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">scols_pretty</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="n">hstr</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+        <span class="n">hlines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">maxwidth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="n">columnwidth</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># header</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">if</span> <span class="n">add_version_info</span><span class="p">:</span>
+            <span class="n">h</span><span class="p">[</span><span class="s2">&quot;hicsv-python version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">__version__</span>
+            <span class="n">h</span><span class="p">[</span><span class="s2">&quot;hicsv version&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">HICSV_VERSION</span>
+        
+        <span class="n">hstr</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">hlines</span> <span class="o">=</span> <span class="n">hstr</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">hlines</span> <span class="o">=</span> <span class="p">[</span><span class="n">HEADER_STARTSWITH</span> <span class="o">+</span> <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">hlines</span><span class="p">]</span>
+        <span class="n">hstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">hlines</span><span class="p">)</span>
+    
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">hstr</span><span class="p">)</span>
+
+        <span class="c1"># special case: no keys</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">:</span>
+            <span class="k">return</span>
+        
+        <span class="c1"># list of list of strings for each column</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">cols</span><span class="p">):</span>
+            <span class="n">scol</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">scol</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\&quot;\&quot;</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">issubdtype</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">str_</span><span class="p">):</span> <span class="c1"># special case for strings</span>
+                <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">col</span><span class="p">:</span>
+                    <span class="c1"># escape double quotation and embrace with triple-double quotation</span>
+                    <span class="n">scol</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span> <span class="o">+</span> <span class="n">value</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\&quot;\&quot;</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">)</span> 
+            <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">col</span><span class="p">:</span>
+                <span class="n">scol</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+
+            <span class="n">scols</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scol</span><span class="p">)</span>
+        
+        <span class="c1"># put # at the linehead of the key column</span>
+        <span class="n">scols</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">HEADER_STARTSWITH</span> <span class="o">+</span> <span class="n">scols</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">prettify</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">scol</span> <span class="ow">in</span> <span class="n">scols</span><span class="p">:</span>
+                <span class="n">maxwidth</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scol</span><span class="p">])</span>
+                <span class="n">columnwidth</span> <span class="o">=</span> <span class="n">maxwidth</span>
+                <span class="n">scols_pretty</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">s</span> <span class="o">+</span> <span class="s2">&quot; &quot;</span><span class="o">*</span><span class="p">(</span><span class="n">columnwidth</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">))</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">scol</span><span class="p">])</span>
+            <span class="n">scols</span> <span class="o">=</span> <span class="n">scols_pretty</span>
+        
+        <span class="n">fp</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\r\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">DELIMITER</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">scols</span><span class="p">)]))</span>
+
+<div class="viewcode-block" id="hicsv.save"><a class="viewcode-back" href="../hicsv.html#hicsv.hicsv.save">[docs]</a>    <span class="k">def</span> <span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fp</span><span class="p">:</span> <span class="nb">str</span><span class="o">|</span><span class="n">IO</span><span class="p">,</span> <span class="n">prettify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">add_version_info</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Saves the object content to a hicsv-formatted text file. </span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            fp: file-like object of the destination. </span>
+<span class="sd">            prettify: True to turn on pretty formatting. </span>
+<span class="sd">            add_version_info: If True, automatically adds the current versions</span>
+<span class="sd">                of the module and the hicsv format specification. </span>
+<span class="sd">            **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. </span>
+<span class="sd">                The ``mode`` parameter is set to &quot;w&quot; by default. (`New in 1.0.0.`)</span>
+<span class="sd">        </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; d = hicsv.hicsv()</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;first column&quot;, np.arange(5))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;second column&quot;, np.linspace(0.0, 1.0, 5))</span>
+<span class="sd">            &gt;&gt;&gt; d.append_column(&quot;third column&quot;, np.array([&quot;one&quot;, &quot;two&quot;, &quot;three&quot;, &quot;four&quot;, &quot;five&quot;]))</span>
+<span class="sd">            &gt;&gt;&gt; d.save(&quot;spam.txt&quot;)</span>
+
+<span class="sd">            Or, </span>
+
+<span class="sd">            &gt;&gt;&gt; with open(&quot;spam.txt&quot;, &quot;w&quot;) as fp:</span>
+<span class="sd">            &gt;&gt;&gt;     d.save(fp)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">_kwargs</span><span class="p">:</span> <span class="nb">dict</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">_kwargs</span><span class="p">[</span><span class="s2">&quot;mode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;w&quot;</span>
+            <span class="n">_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">_kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">prettify</span><span class="p">,</span> <span class="n">add_version_info</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_save</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">prettify</span><span class="p">,</span> <span class="n">add_version_info</span><span class="p">)</span></div>
+    
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;hicsv.hicsv object at </span><span class="si">{0}</span><span class="s2">, </span><span class="si">{1}</span><span class="s2"> header entries, </span><span class="si">{2}</span><span class="s2"> keys: </span><span class="si">{3}</span><span class="s2">&gt;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">hex</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">h</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">),</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">keys</span><span class="p">))</span>
+    
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">with</span> <span class="n">io</span><span class="o">.</span><span class="n">StringIO</span><span class="p">()</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="n">add_version_info</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">fp</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="txt2hicsv"><a class="viewcode-back" href="../hicsv.html#hicsv.txt2hicsv">[docs]</a><span class="k">def</span> <span class="nf">txt2hicsv</span><span class="p">(</span><span class="n">fp</span><span class="p">:</span> <span class="n">IO</span><span class="o">|</span><span class="nb">str</span><span class="p">,</span> <span class="n">sep</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">ignore_lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span> <span class="n">key_line</span><span class="p">:</span> <span class="nb">int</span><span class="o">|</span><span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">hicsv</span><span class="p">:</span>
+    <span class="sd">&#39;&#39;&#39;Reads a generic delimited text file and converts it into a hicsv object. </span>
+
+<span class="sd">    This is a convenient function to import simple text data file into a hicsv object. </span>
+<span class="sd">    It is also an example of the usage of `hicsv` class. </span>
+<span class="sd">    </span>
+<span class="sd">    Args:</span>
+<span class="sd">        fp: string or file-like object of the input file. </span>
+<span class="sd">        sep: Delimiter character of the input file. Defaults to comma. </span>
+<span class="sd">        ignore_lines: List of line numbers to ignore. Defaults to empty list</span>
+<span class="sd">        key_line: Line number of the column key. If `None`, keys will be automatically </span>
+<span class="sd">            named as &quot;0&quot;, &quot;1&quot;, &quot;2&quot;, etc. </span>
+<span class="sd">        keys: List of column keys. It&#39;s useful if you know the table structure exactly. </span>
+<span class="sd">            This must match the number of columns in the input file. </span>
+<span class="sd">            When `keys` is specified, `key_line` will be ignored. </span>
+<span class="sd">        **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. (`New in 1.0.0.`)</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">lines_table</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">rows_str</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">_ignore_lines</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="n">ignore_lines</span>
+    <span class="n">i</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">_keys</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">length</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">fp</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">fp</span><span class="o">.</span><span class="n">readlines</span><span class="p">()</span>
+
+    <span class="c1"># if keys are provided, use that. </span>
+    <span class="k">if</span> <span class="n">keys</span><span class="p">:</span>
+        <span class="n">_keys</span> <span class="o">=</span> <span class="n">keys</span>
+    <span class="c1"># if not provided and the key_line is provided (as int), </span>
+    <span class="c1"># try to read the keys from that line</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key_line</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">([</span><span class="n">lines</span><span class="p">[</span><span class="n">key_line</span><span class="p">],</span> <span class="p">],</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">sep</span><span class="p">):</span> <span class="c1"># just one line</span>
+            <span class="n">_keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span><span class="o">.</span><span class="n">strip</span><span class="p">(</span><span class="s2">&quot; &quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span>
+
+        <span class="c1"># this line should also be ignored</span>
+        <span class="n">_ignore_lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key_line</span><span class="p">)</span>
+
+    <span class="c1"># ignore the specified lines</span>
+    <span class="n">lines_table</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">l</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">ignore_lines</span><span class="p">]</span>
+
+    <span class="c1"># parse data lines</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">lines_table</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">sep</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">row</span><span class="p">:</span>
+            <span class="n">rows_str</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">e</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">e</span> <span class="ow">in</span> <span class="n">row</span><span class="p">])</span> <span class="c1"># spaces are omitted</span>
+
+    <span class="n">length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows_str</span><span class="p">)</span>
+
+    <span class="n">cols_str</span> <span class="o">=</span> <span class="p">[</span><span class="o">*</span><span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="n">rows_str</span><span class="p">)]</span>
+
+    <span class="c1"># if the keys are not specified and not found, </span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols_str</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">_keys</span><span class="p">:</span>
+        <span class="n">_keys</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">j</span><span class="p">)</span> <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">cols_str</span><span class="p">))]</span> <span class="c1"># auto generate the column keys</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">cols_str</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">_keys</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;column key number does not match the actual number of columns&quot;</span><span class="p">)</span>
+
+    <span class="n">out</span> <span class="o">=</span> <span class="n">hicsv</span><span class="p">()</span>
+
+    <span class="c1"># detect type and store arrays</span>
+    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">col_str</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">_keys</span><span class="p">,</span> <span class="n">cols_str</span><span class="p">):</span>
+        <span class="c1"># check if it&#39;s int</span>
+        <span class="k">if</span> <span class="n">col_str</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">isdigit</span><span class="p">():</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># if not, check if it&#39;s float</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">col_str</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="c1"># if not, then it is stored as string</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">))</span>
+                <span class="c1"># if it&#39;s not an int or string, then it must be a float. </span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">col_str</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">float</span><span class="p">))</span>
+    
+    <span class="k">return</span> <span class="n">out</span></div>
+    
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">hicsv</span><span class="p">()</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;c1&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;c2&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;c3,3&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;c4</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">]))</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">append_column</span><span class="p">(</span><span class="s2">&quot;c5 --- </span><span class="se">\&quot;</span><span class="s2">---</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="s2">&quot;a</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\&quot;</span><span class="s2">b&quot;</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">,</span> <span class="s2">&quot;d&quot;</span><span class="p">,</span> <span class="s2">&quot;e, f&quot;</span><span class="p">]))</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;some header&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;some value&quot;</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">h</span><span class="p">[</span><span class="s2">&quot;it can be as complex as you want&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span><span class="p">,</span> <span class="s2">&quot;one&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">}</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+        <span class="n">d</span><span class="o">.</span><span class="n">_save</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+    <span class="n">a1</span><span class="p">,</span> <span class="n">a2</span> <span class="o">=</span> <span class="n">d</span><span class="o">.</span><span class="n">ga</span><span class="p">(</span><span class="s2">&quot;c1&quot;</span><span class="p">,</span> <span class="s2">&quot;c2&quot;</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+        <span class="n">o</span> <span class="o">=</span> <span class="n">hicsv</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+    <span class="kn">import</span> <span class="nn">csv</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;csvtest.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">writerows</span><span class="p">([[</span><span class="s2">&quot;A1</span><span class="se">\&quot;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;A2&quot;</span><span class="p">]])</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">keys</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;test2.txt&quot;</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">fp</span><span class="p">:</span>
+        <span class="n">o</span><span class="o">.</span><span class="n">_save</span><span class="p">(</span><span class="n">fp</span><span class="p">)</span>
+
+    <span class="n">o</span><span class="o">.</span><span class="n">replace_column</span><span class="p">(</span><span class="s2">&quot;c1&quot;</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">10</span><span class="p">))</span>
+
+    <span class="n">o</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;test3.txt&quot;</span><span class="p">)</span>
+
+    <span class="n">o</span><span class="o">.</span><span class="n">remove_column</span><span class="p">(</span><span class="s2">&quot;c3,3&quot;</span><span class="p">)</span>
+    <span class="n">o</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;test4.txt&quot;</span><span class="p">)</span>
+
+    <span class="n">r</span> <span class="o">=</span> <span class="n">hicsv</span><span class="p">(</span><span class="s2">&quot;SN_P03-21_C6F6_10mgmL.txt&quot;</span><span class="p">)</span>
+    <span class="n">r</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="s2">&quot;rewrite.txt&quot;</span><span class="p">)</span>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../index.html">hicsv-python 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hicsv</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2022, Shintaro Nakagawa.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

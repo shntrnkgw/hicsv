@@ -1,0 +1,10 @@
+hicsv package
+=============
+
+Module contents
+---------------
+
+.. automodule:: hicsv
+   :members:
+   :undoc-members:
+   :show-inheritance:

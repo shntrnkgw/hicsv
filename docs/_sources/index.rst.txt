@@ -1,0 +1,31 @@
+.. hicsv-python documentation master file, created by
+   sphinx-quickstart on Tue Aug 16 21:49:48 2022.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+hicsv-python documentation
+==========================
+
+Python implementation of the I/O interface 
+for the Header-Included Comma-Separated Values 
+(`hicsv`) file format. 
+
+Installation
+------------
+
+conda
+
+.. code-block:: console
+
+   conda install -c conda-forge hicsv-python
+
+pip
+
+.. code-block:: console
+
+   pip install hicsv-python
+
+API Reference
+-------------
+
+:doc:`hicsv`
