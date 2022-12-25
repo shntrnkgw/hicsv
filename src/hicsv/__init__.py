@@ -94,7 +94,7 @@ Example:
     so adding an array with different length will cause error. 
     Then you can write into a hicsv-formatted text file like::
 
-        >>> out.save("new hicsv file.txt")
+        >>> out.save("new hicsv file.txt", encoding="utf-8")
 
 Note:
     Some users may find the following behavior of this package unexpected. 
@@ -108,12 +108,12 @@ Note:
        results in identical strings. 
 """
 
-from typing import List, IO
+from typing import List, IO, Any
 import json, csv, io
 
 import numpy as np
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
 HICSV_VERSION = "20220812"
 
 HEADER_STARTSWITH: str = "#"
@@ -123,12 +123,12 @@ class hicsv(object):
     """Container/writer class for a hicsv file. 
 
     Args:
-        fp: 
-            File-like object or path to the file. 
+        fp: File-like object or path to the file. 
             If an empty string, an empty object will be created. 
             If a string or a file-like object is given, 
             the file will be loaded as the object. 
-            Defaults to "" (empty string). 
+            Defaults to ``""`` (empty string) which creates an empty object. 
+        **kwargs: Arguments of built-in function ``open()``. (`New in 1.0.0.`)
 
     Attributes:
         keys: column keys. a list of strings. 
@@ -154,7 +154,7 @@ class hicsv(object):
 
     """
 
-    def __init__(self, fp: str|IO = "") -> None:
+    def __init__(self, fp: str|IO = "", **kwargs: Any) -> None:
         """initializer
         """
         self.keys: List[str]        = []
@@ -163,7 +163,7 @@ class hicsv(object):
 
         if fp:
             if isinstance(fp, str):
-                with open(fp, "r") as f:
+                with open(fp, **kwargs) as f:
                     self._fromfile(f)
             else:
                 self._fromfile(fp)
@@ -546,7 +546,7 @@ class hicsv(object):
         
         fp.write("\r\n".join([DELIMITER.join(row) for row in zip(*scols)]))
 
-    def save(self, fp: str|IO, prettify: bool = True, add_version_info: bool = True) -> None:
+    def save(self, fp: str|IO, prettify: bool = True, add_version_info: bool = True, **kwargs: Any) -> None:
         """Saves the object content to a hicsv-formatted text file. 
         
         Args:
@@ -554,6 +554,8 @@ class hicsv(object):
             prettify: True to turn on pretty formatting. 
             add_version_info: If True, automatically adds the current versions
                 of the module and the hicsv format specification. 
+            **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. 
+                The ``mode`` parameter is set to "w" by default. (`New in 1.0.0.`)
         
         Example:
             >>> d = hicsv.hicsv()
@@ -568,7 +570,10 @@ class hicsv(object):
             >>>     d.save(fp)
         """
         if isinstance(fp, str):
-            with open(fp, "w") as f:
+            _kwargs: dict = {}
+            _kwargs["mode"] = "w"
+            _kwargs.update(**kwargs)
+            with open(fp, "w", **_kwargs) as f:
                 return self._save(f, prettify, add_version_info)
         else:
             return self._save(fp, prettify, add_version_info)
@@ -583,7 +588,7 @@ class hicsv(object):
 
 
 
-def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line: int|None = None, keys: List[str] = []) -> hicsv:
+def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line: int|None = None, keys: List[str] = [], **kwargs: Any) -> hicsv:
     '''Reads a generic delimited text file and converts it into a hicsv object. 
 
     This is a convenient function to import simple text data file into a hicsv object. 
@@ -598,6 +603,7 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
         keys: List of column keys. It's useful if you know the table structure exactly. 
             This must match the number of columns in the input file. 
             When `keys` is specified, `key_line` will be ignored. 
+        **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. (`New in 1.0.0.`)
     '''
 
     lines: List[str] = []
@@ -609,7 +615,7 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
     length: int = 0
 
     if isinstance(fp, str):
-        with open(fp, "r") as f:
+        with open(fp, **kwargs) as f:
             lines = f.readlines()
     else:
         lines = fp.readlines()
