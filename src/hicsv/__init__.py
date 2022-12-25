@@ -113,7 +113,7 @@ import json, csv, io
 
 import numpy as np
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 HICSV_VERSION = "20220812"
 
 HEADER_STARTSWITH: str = "#"
@@ -573,7 +573,7 @@ class hicsv(object):
             _kwargs: dict = {}
             _kwargs["mode"] = "w"
             _kwargs.update(**kwargs)
-            with open(fp, "w", **_kwargs) as f:
+            with open(fp, **_kwargs) as f:
                 return self._save(f, prettify, add_version_info)
         else:
             return self._save(fp, prettify, add_version_info)
@@ -671,40 +671,4 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
     return out
     
 if __name__ == "__main__":
-    d = hicsv()
-    d.append_column("c1", np.arange(5))
-    d.append_column("c2", np.random.rand(5))
-    d.append_column("c3,3", np.random.rand(5))
-    d.append_column("c4\"", np.array([1.0, 2.0, np.nan, 4.0, 5.0]))
-    d.append_column("c5 --- \"---\"", np.array(["a\"", "\"b", "c", "d", "e, f"]))
-    d.h["some header"] = "some value"
-    d.h["it can be as complex as you want"] = {"foo": "bar", "one": 1}
-
-    with open("test.txt", "w") as fp:
-        d._save(fp)
-
-    a1, a2 = d.ga("c1", "c2")
-
-    with open("test.txt", "r") as fp:
-        o = hicsv(fp)
-
-    import csv
-
-    with open("csvtest.txt", "w") as f:
-        writer = csv.writer(f)
-        writer.writerows([["A1\"", "A2"]])
-
-    print(o.keys)
-
-    with open("test2.txt", "w") as fp:
-        o._save(fp)
-
-    o.replace_column("c1", np.arange(5, 10))
-
-    o.save("test3.txt")
-
-    o.remove_column("c3,3")
-    o.save("test4.txt")
-
-    r = hicsv("SN_P03-21_C6F6_10mgmL.txt")
-    r.save("rewrite.txt")
+    pass
