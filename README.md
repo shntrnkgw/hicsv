@@ -1,6 +1,9 @@
 # hicsv-python
 Python implementation of the I/O interface for the Header-Included Comma-Separated Values (hicsv) file format. 
 
+## Documentation
+[The API documentation is available here](https://shntrnkgw.github.io/hicsv/). 
+
 ## What is *hicsv*?
 Header-included comma-separated values (*hicsv* or *hi-csv* in short)
 is a text file format consisting of a header (metadata) 
