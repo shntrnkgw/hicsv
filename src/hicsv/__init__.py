@@ -113,7 +113,7 @@ import json, csv, io
 
 import numpy as np
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 HICSV_VERSION = "20220812"
 
 HEADER_STARTSWITH: str = "#"
@@ -530,7 +530,7 @@ class hicsv(object):
                     # escape double quotation and embrace with triple-double quotation
                     scol.append("\"" + value.replace("\"", "\"\"") + "\"") 
             for value in col:
-                scol.append(repr(value))
+                scol.append(str(value))
 
             scols.append(scol)
         
@@ -641,6 +641,9 @@ def txt2hicsv(fp: IO|str, sep: str = ",", ignore_lines: List[int] = [], key_line
             rows_str.append([e.strip() for e in row]) # spaces are omitted
 
     length = len(rows_str)
+
+    for row in rows_str:
+        print(len(row))
 
     cols_str = [*zip(*rows_str)]
 

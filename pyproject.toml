@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hicsv-python"
-version = "1.0.1"
+version = "1.1.0"
 description = "Python implementation of the Header-Included Comma-Separated Values (hicsv) file format. "
 readme = "README.md"
 authors = [{name = "Shintaro Nakagawa", email = "shntrnkgw@gmail.com"}]
@@ -23,3 +23,8 @@ Homepage = "https://github.com/shntrnkgw/hicsv"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
