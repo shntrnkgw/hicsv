@@ -36,7 +36,7 @@ human-readable format with embedded metadata.
 It is basically just a CSV table with a JSON header part attached 
 at the top. The rough, tentative specification of *hicsv* is as follows. 
 
-1. It should be a Unicode text file. 
+1. It should be a Unicode text file with the newline character ``\\n``. 
 
 2. It starts with consequtive lines starting with ``#``. 
 
@@ -168,11 +168,14 @@ class hicsv(object):
             else:
                 self._fromfile(fp)
 
-    def fromfile(self, fp: str|IO) -> None:
+    def fromfile(self, fp: str|IO, **kwargs: Any) -> None:
         """ Loads a hicsv file and updates the stored headers & columns. 
         
         Args:
             fp: file-like object or path to the file. 
+            **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. 
+                The ``mode``, ``encoding``, and ``newline`` parameters are overwritten by 
+                "r", "utf-8", and "\\n" by default. New in 1.1.0.
 
         Note:
             It overwrites the header ``h`` and appends the loaded columns to
@@ -181,7 +184,12 @@ class hicsv(object):
             this will not work. 
         """
         if isinstance(fp, str):
-            with open(fp, "r") as f:
+            _kwargs: dict = {}
+            _kwargs.update(**kwargs)
+            _kwargs["mode"] = "r"
+            _kwargs["encoding"] = "utf-8"
+            _kwargs["newline"] = "\n"
+            with open(fp, **_kwargs) as f:
                 self._fromfile(f)
         else:
             return self._fromfile(fp)
@@ -555,7 +563,8 @@ class hicsv(object):
             add_version_info: If True, automatically adds the current versions
                 of the module and the hicsv format specification. 
             **kwargs: Arguments of built-in ``open()``. Used only when ``fp`` is a string. 
-                The ``mode`` parameter is set to "w" by default. (`New in 1.0.0.`)
+                The ``mode``, ``encoding``, and ``newline`` parameters are overwritten by 
+                "w", "utf-8", and "\\n" by default. New in 1.0.0.
         
         Example:
             >>> d = hicsv.hicsv()
@@ -571,8 +580,10 @@ class hicsv(object):
         """
         if isinstance(fp, str):
             _kwargs: dict = {}
-            _kwargs["mode"] = "w"
             _kwargs.update(**kwargs)
+            _kwargs["mode"] = "w"
+            _kwargs["encoding"] = "utf-8"
+            _kwargs["newline"] = "\n"
             with open(fp, **_kwargs) as f:
                 return self._save(f, prettify, add_version_info)
         else:

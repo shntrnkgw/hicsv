@@ -1,3 +1,12 @@
+# New workflow with uv
+
+1. Run tests
+```
+$ uv run -m pytest
+```
+
+# Old workflow
+
 Do below in the main environment (e.g., labenv3.10)
 
 1. Typing check by 

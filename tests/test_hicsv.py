@@ -13,7 +13,7 @@ HEADER_DICT_LISTS = {"test key 2": [0.0, 0.1, 0.2], }
 HEADER_DICT_DICTS = {"test key 3": {"inner test key 0": 0, 
                                     "inner test key 1": "内側テスト値1"}}
 
-PATH_TEMP = "temp.txt"
+PATH_TEMP = "tests/temp.txt"
 
 def test_no_table():
     
@@ -22,11 +22,11 @@ def test_no_table():
     hc.h.update(HEADER_DICT_SINGLES)
     hc.h.update(HEADER_DICT_LISTS)
     hc.h.update(HEADER_DICT_DICTS)
-    hc.save(PATH_TEMP)
+    hc.save(PATH_TEMP, encoding="utf-8")
 
     # read from a file and delete
-    hc2 = hicsv.hicsv(PATH_TEMP)
-    # os.remove(PATH_TEMP)
+    hc2 = hicsv.hicsv(PATH_TEMP, mode="r", encoding="utf-8")
+    os.remove(PATH_TEMP)
 
     # test header
     for k, v in HEADER_DICT_SINGLES.items():
@@ -65,11 +65,11 @@ def test_float_table():
     hc.append_column(ck0, arr0)
     hc.append_column(ck1, arr1)
 
-    hc.save(PATH_TEMP)
+    hc.save(PATH_TEMP, encoding="utf-8")
 
     # read from a file and delete
-    hc2 = hicsv.hicsv(PATH_TEMP)
-    # os.remove(PATH_TEMP)
+    hc2 = hicsv.hicsv(PATH_TEMP, encoding="utf-8")
+    os.remove(PATH_TEMP)
 
     # test header
     assert hc2.h["hicsv-python version"] == hicsv.__version__
