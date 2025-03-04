@@ -279,23 +279,22 @@ class hicsv(object):
 
         num_rows = len(rows_str)
         num_cols = len(keys)
-        cols_str = [[rows_str[i][j] for i in range(num_rows)] for j in range(num_cols)] # same as list(zip(*row_str))
+        cols_str = [np.array([rows_str[i][j] for i in range(num_rows)]) for j in range(num_cols)] # same as list(zip(*row_str))
 
         # detect type and store arrays
         for key, col_str in zip(keys, cols_str):
-            # check if it's int
-            if col_str[0].isdigit():
-                self.append_column(key, np.array(col_str).astype(int))
-            else:
-                # if not, check if it's float
+            # if it can be parsed as int, it is int
+            try:
+                col_arr = col_str.astype(int)
+            except ValueError: 
+                # if not int, check if it's float
                 try:
-                    float(col_str[0])
+                    col_arr = col_str.astype(float)
                 except ValueError:
-                    # if not, then it is stored as string
-                    self.append_column(key, np.array(col_str))
-                    # if it's not an int or string, then it must be a float. 
-                else:
-                    self.append_column(key, np.array(col_str).astype(float))
+                    # if not float, then it is stored as string
+                    col_arr = col_str
+            
+            self.append_column(key, col_arr)
         
         self.h.update(h)
     
@@ -537,8 +536,9 @@ class hicsv(object):
                 for value in col:
                     # escape double quotation and embrace with triple-double quotation
                     scol.append("\"" + value.replace("\"", "\"\"") + "\"") 
-            for value in col:
-                scol.append(str(value))
+            else:
+                for value in col:
+                    scol.append(str(value))
 
             scols.append(scol)
         
