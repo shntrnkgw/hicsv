@@ -15,6 +15,7 @@ HEADER_DICT_DICTS = {"test key 3": {"inner test key 0": 0,
 
 PATH_TEMP = "tests/temp.txt"
 
+@pytest.mark.filterwarnings("error")
 def test_no_table():
     
     # create test object and write to a file
@@ -49,7 +50,7 @@ def test_no_table():
     with pytest.raises(KeyError):
         hc2.ga("this key does not exist")
 
-
+@pytest.mark.filterwarnings("error")
 def test_float_table():
     
     # create test object and write to a file
@@ -80,7 +81,7 @@ def test_float_table():
     assert np.array_equal(arr0_read, arr0, equal_nan=True)
     assert np.array_equal(arr1_read, arr1, equal_nan=True)
 
-
+@pytest.mark.filterwarnings("error")
 def test_float_table_with_nan():
     
     # create test object and write to a file
@@ -112,7 +113,7 @@ def test_float_table_with_nan():
     assert np.array_equal(hc2.ga(ck0), arr0, equal_nan=True)
     assert np.array_equal(hc2.ga(ck1), arr1, equal_nan=True)
 
-
+@pytest.mark.filterwarnings("error")
 def test_string_table():
     
     # create test object and write to a file
@@ -123,7 +124,7 @@ def test_string_table():
     arr1 = rng.random(100).astype(str)
 
     ck0 = "string column"
-    ck1 = "string column that looks like float column"
+    ck1 = "quoted float column"
 
     hc.append_column(ck0, arr0)
     hc.append_column(ck1, arr1)
@@ -142,5 +143,6 @@ def test_string_table():
 
     print(arr0)
 
-    assert np.array_equal(hc2.ga(ck0), arr0)
-    assert not np.array_equal(hc2.ga(ck1), arr1)
+    # assert np.array_equal(hc2.ga(ck0), arr0)
+    assert np.all(hc2.ga(ck0) == arr0)
+    assert np.all(hc2.ga(ck1) == arr1.astype(float))
